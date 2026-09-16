@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Environment variables (Crucial: never commit passwords!)
+.env
+*.env
+.env.example
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Logs & temp files
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store

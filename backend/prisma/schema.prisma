@@ -1,0 +1,83 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Roles Enum for Authenticated Portals
+enum Role {
+  SUPER_ADMIN
+  SUPERVISOR
+}
+
+// 2. Status Enum for Students
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// 3. Attendance Action Types
+enum AttendanceType {
+  IN
+  OUT
+}
+
+// System Users (Supervisors and Super Admins)
+model User {
+  id            String     @id @default(uuid())
+  username      String     @unique
+  passwordHash  String
+  role          Role       @default(SUPERVISOR)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Explicit Relation: A supervisor can be assigned to multiple students.
+  // Both sides agree that supervisor is optional (User?).
+  students      Student[]  @relation("SupervisorStudents")
+
+  @@map("users")
+}
+
+// Students (Managed by Admin, selected by name by themselves)
+model Student {
+  id            String        @id @default(uuid())
+  firstName     String
+  lastName      String
+  phone         String
+  status        StudentStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Nullable Relation & Scalar field matching strictly:
+  // supervisorId is String? (optional), matching supervisor User? (optional).
+  // onDelete SetNull prevents deletion failures without nullability mismatches.
+  supervisorId  String?
+  supervisor    User?         @relation("SupervisorStudents", fields: [supervisorId], references: [id], onDelete: SetNull)
+
+  // One-to-Many relation with Attendance
+  attendances   Attendance[]
+
+  @@map("students")
+}
+
+// Attendance Logs
+model Attendance {
+  id          String         @id @default(uuid())
+  type        AttendanceType
+  timestamp   DateTime       @default(now()) // Server-side timestamp for accuracy
+  latitude    Float
+  longitude   Float
+  accuracy    Float?
+
+  // Explicit Required Relation: Attendance MUST belong to a valid Student.
+  // studentId is String (required) and student is Student (required).
+  studentId   String
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("attendances")
+}
