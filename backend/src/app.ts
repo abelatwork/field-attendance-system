@@ -10,10 +10,11 @@ dotenv.config();
 
 const app = express();
 
+// 1. MUST BE PLACED BEFORE ROUTES
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // <--- Parses JSON request bodies
 
-// Routes
+// 2. Routes
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
