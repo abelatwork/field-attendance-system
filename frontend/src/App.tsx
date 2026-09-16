@@ -31,7 +31,12 @@ function App() {
   return (
     <div>
       <header className="bg-slate-900 text-white px-6 py-2 flex justify-between items-center text-sm">
-        <span>Field Attendance System v1.0</span>
+        <h1 className="text-xl font-bold text-white-800">
+          Field Attendance System{" "}
+          <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded">
+            v1.0.0
+          </span>
+        </h1>
         <div className="space-x-4">
           <button
             onClick={() => setCurrentView("public")}
