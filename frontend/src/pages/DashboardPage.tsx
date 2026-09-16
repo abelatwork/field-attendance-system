@@ -26,6 +26,15 @@ interface Student {
   lastName: string;
   phone: string;
   status: "ACTIVE" | "INACTIVE";
+  supervisor?: {
+    id: string;
+    username: string;
+  } | null;
+}
+
+interface SupervisorOption {
+  id: string;
+  username: string;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -35,18 +44,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<"logs" | "students">("logs");
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [supervisors, setSupervisors] = useState<SupervisorOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   // New Student Form State
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
   const [formMsg, setFormMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab === "logs") fetchLogs();
-    if (activeTab === "students") fetchStudents();
-  }, [activeTab]);
+    if (activeTab === "students" && user.role === "SUPER_ADMIN") {
+      fetchStudents();
+      fetchSupervisors();
+    }
+  }, [activeTab, user.role]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -72,14 +86,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const fetchSupervisors = async () => {
+    try {
+      const response = await api.get<SupervisorOption[]>("/admin/supervisors");
+      setSupervisors(response.data);
+    } catch (err) {
+      console.error("Failed to load supervisors:", err);
+    }
+  };
+
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/admin/students", { firstName, lastName, phone });
+      await api.post("/admin/students", {
+        firstName,
+        lastName,
+        phone,
+        supervisorId: selectedSupervisorId || undefined,
+      });
       setFormMsg("Student created successfully!");
       setFirstName("");
       setLastName("");
       setPhone("");
+      setSelectedSupervisorId("");
       fetchStudents();
     } catch (err: any) {
       setFormMsg(err.response?.data?.message || "Failed to create student.");
@@ -96,7 +125,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  // Step 3: Export Logs to CSV
   const exportToCSV = () => {
     if (logs.length === 0) return;
     const headers = ["Student Name,Phone,Type,Timestamp,Latitude,Longitude\n"];
@@ -218,7 +246,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${log.type === "IN" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            log.type === "IN"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
                         >
                           Check {log.type}
                         </span>
@@ -250,7 +282,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {formMsg && (
                 <p className="text-sm text-blue-600 font-medium">{formMsg}</p>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <input
                   type="text"
                   placeholder="First Name"
@@ -275,6 +307,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   onChange={(e) => setPhone(e.target.value)}
                   className="px-4 py-2 border rounded-lg text-sm"
                 />
+                <select
+                  value={selectedSupervisorId}
+                  onChange={(e) => setSelectedSupervisorId(e.target.value)}
+                  className="px-4 py-2 border rounded-lg text-sm bg-white text-slate-700"
+                >
+                  <option value="">Unassigned (No Supervisor)</option>
+                  {supervisors.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.username}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 type="submit"
@@ -295,6 +339,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Assigned Supervisor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
@@ -311,9 +358,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {st.phone}
                       </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {st.supervisor ? st.supervisor.username : "Unassigned"}
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${st.status === "ACTIVE" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            st.status === "ACTIVE"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                         >
                           {st.status}
                         </span>

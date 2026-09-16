@@ -86,6 +86,11 @@ export const toggleStudentStatus = async (
     const updatedStudent = await prisma.student.update({
       where: { id },
       data: { status: newStatus },
+      include: {
+        supervisor: {
+          select: { id: true, username: true },
+        },
+      },
     });
 
     return res.status(200).json({
@@ -109,11 +114,11 @@ export const getSupervisors = async (
     const supervisors = await prisma.user.findMany({
       where: { role: Role.SUPERVISOR },
       select: { id: true, username: true },
+      orderBy: { username: "asc" },
     });
-
     return res.status(200).json(supervisors);
   } catch (error) {
     console.error("Fetch supervisors error:", error);
-    return res.status(500).json({ message: "Failed to fetch supervisors." });
+    return res.status(500).json({ message: "Failed to fetch supervisors" });
   }
 };

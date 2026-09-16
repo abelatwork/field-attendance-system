@@ -24,10 +24,10 @@ async function main() {
 
   // 3. Create a Supervisor
   const supervisor = await prisma.user.upsert({
-    where: { username: "supervisor1" },
+    where: { username: "supervisor" },
     update: {},
     create: {
-      username: "supervisor1",
+      username: "supervisor",
       passwordHash: hashedPassword,
       role: Role.SUPERVISOR,
     },

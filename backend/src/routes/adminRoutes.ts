@@ -17,14 +17,11 @@ router.use(authenticate);
 // Super Admin Only Routes
 router.post("/students", authorize(["SUPER_ADMIN"]), createStudent);
 router.get("/students", authorize(["SUPER_ADMIN"]), getAllStudents);
-router.patch(
-  "/students/:id/status",
-  authorize(["SUPER_ADMIN"]),
-  toggleStudentStatus,
-);
+// Updated path below to match the frontend api.patch('/admin/students/${id}')
+router.patch("/students/:id", authorize(["SUPER_ADMIN"]), toggleStudentStatus);
 router.get("/supervisors", authorize(["SUPER_ADMIN"]), getSupervisors);
 
-// Dashboard Attendance Logs (Accessible to both SUPER_ADMIN and SUPERVISOR)
+// Dashboard Attendance Logs (SUPER_ADMIN and SUPERVISOR)
 router.get(
   "/attendance-logs",
   authorize(["SUPER_ADMIN", "SUPERVISOR"]),
