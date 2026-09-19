@@ -3,7 +3,13 @@ import React, { useState, useEffect } from "react";
 import { api } from "../services/api";
 
 interface DashboardPageProps {
-  user: { username: string; role: "SUPER_ADMIN" | "SUPERVISOR" };
+  user: {
+    username: string;
+    role: "SUPER_ADMIN" | "SUPERVISOR";
+    firstName?: string;
+    lastName?: string;
+    department?: string;
+  };
   onLogout: () => void;
 }
 
@@ -32,32 +38,78 @@ interface Student {
   } | null;
 }
 
+interface Supervisor {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  department: string;
+  role: "SUPER_ADMIN" | "SUPERVISOR";
+}
+
 interface SupervisorOption {
   id: string;
   username: string;
 }
 
+interface SupervisorForm {
+  username: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  department: string;
+  role: "SUPER_ADMIN" | "SUPERVISOR";
+}
+
+const emptySupervisorForm: SupervisorForm = {
+  username: "",
+  password: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
+  department: "",
+  role: "SUPERVISOR",
+};
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   onLogout,
 }) => {
-  const [activeTab, setActiveTab] = useState<"logs" | "students">("logs");
+  const [activeTab, setActiveTab] = useState<
+    "logs" | "students" | "supervisors"
+  >("logs");
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [supervisors, setSupervisors] = useState<SupervisorOption[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+  const [supervisorOptions, setSupervisorOptions] = useState<
+    SupervisorOption[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
-  // New Student Form State
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
   const [formMsg, setFormMsg] = useState<string | null>(null);
 
+  const [supervisorForm, setSupervisorForm] =
+    useState<SupervisorForm>(emptySupervisorForm);
+  const [editingSupervisorId, setEditingSupervisorId] = useState<string | null>(
+    null,
+  );
+  const [supervisorMessage, setSupervisorMessage] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     if (activeTab === "logs") fetchLogs();
     if (activeTab === "students" && user.role === "SUPER_ADMIN") {
       fetchStudents();
+      fetchSupervisors();
+    }
+    if (activeTab === "supervisors" && user.role === "SUPER_ADMIN") {
       fetchSupervisors();
     }
   }, [activeTab, user.role]);
@@ -88,8 +140,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const fetchSupervisors = async () => {
     try {
-      const response = await api.get<SupervisorOption[]>("/admin/supervisors");
+      const response = await api.get<Supervisor[]>("/admin/supervisors");
       setSupervisors(response.data);
+      setSupervisorOptions(
+        response.data
+          .filter((supervisor) => supervisor.role === "SUPERVISOR")
+          .map((supervisor) => ({
+            id: supervisor.id,
+            username: supervisor.username,
+          })),
+      );
     } catch (err) {
       console.error("Failed to load supervisors:", err);
     }
@@ -122,6 +182,109 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       fetchStudents();
     } catch (err) {
       console.error("Failed to update student status:", err);
+    }
+  };
+
+  const resetSupervisorForm = () => {
+    setSupervisorForm(emptySupervisorForm);
+    setEditingSupervisorId(null);
+    setSupervisorMessage(null);
+  };
+
+  const handleSupervisorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const payload = {
+      username: supervisorForm.username.trim(),
+      password: supervisorForm.password,
+      firstName: supervisorForm.firstName.trim(),
+      lastName: supervisorForm.lastName.trim(),
+      phone: supervisorForm.phone.trim(),
+      department: supervisorForm.department.trim(),
+      role: supervisorForm.role,
+    };
+
+    try {
+      if (editingSupervisorId) {
+        const { password, ...rest } = payload;
+        const updatePayload = {
+          ...rest,
+          ...(password ? { password } : {}),
+        };
+        await api.patch(
+          `/admin/supervisors/${editingSupervisorId}`,
+          updatePayload,
+        );
+        setSupervisorMessage("Supervisor updated successfully.");
+      } else {
+        if (!payload.password) {
+          setSupervisorMessage(
+            "Password is required when creating a supervisor.",
+          );
+          return;
+        }
+        await api.post("/admin/supervisors", payload);
+        setSupervisorMessage("Supervisor added successfully.");
+      }
+
+      resetSupervisorForm();
+      fetchSupervisors();
+    } catch (err: any) {
+      setSupervisorMessage(
+        err.response?.data?.message || "Failed to save supervisor details.",
+      );
+    }
+  };
+
+  const handleEditSupervisor = (supervisor: Supervisor) => {
+    setEditingSupervisorId(supervisor.id);
+    setSupervisorForm({
+      username: supervisor.username,
+      password: "",
+      firstName: supervisor.firstName,
+      lastName: supervisor.lastName,
+      phone: supervisor.phone,
+      department: supervisor.department,
+      role: supervisor.role,
+    });
+    setSupervisorMessage(null);
+  };
+
+  const handleDeleteSupervisor = async (id: string) => {
+    if (
+      !window.confirm(
+        "Delete this supervisor account? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/admin/supervisors/${id}`);
+      setSupervisorMessage("Supervisor deleted successfully.");
+      if (editingSupervisorId === id) resetSupervisorForm();
+      fetchSupervisors();
+    } catch (err: any) {
+      setSupervisorMessage(
+        err.response?.data?.message || "Failed to delete supervisor.",
+      );
+    }
+  };
+
+  const handleToggleSupervisorRole = async (supervisor: Supervisor) => {
+    const nextRole =
+      supervisor.role === "SUPER_ADMIN" ? "SUPERVISOR" : "SUPER_ADMIN";
+
+    try {
+      await api.patch(`/admin/supervisors/${supervisor.id}/role`, {
+        role: nextRole,
+      });
+      setSupervisorMessage(`Supervisor role updated to ${nextRole}.`);
+      fetchSupervisors();
+    } catch (err: any) {
+      setSupervisorMessage(
+        err.response?.data?.message || "Failed to update supervisor role.",
+      );
     }
   };
 
@@ -176,16 +339,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               Attendance Logs
             </button>
             {user.role === "SUPER_ADMIN" && (
-              <button
-                onClick={() => setActiveTab("students")}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg ${
-                  activeTab === "students"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-slate-600 border"
-                }`}
-              >
-                Manage Students
-              </button>
+              <>
+                <button
+                  onClick={() => setActiveTab("students")}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg ${
+                    activeTab === "students"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-slate-600 border"
+                  }`}
+                >
+                  Manage Students
+                </button>
+                <button
+                  onClick={() => setActiveTab("supervisors")}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg ${
+                    activeTab === "supervisors"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-slate-600 border"
+                  }`}
+                >
+                  Manage Supervisors
+                </button>
+              </>
             )}
           </div>
 
@@ -199,7 +374,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
         </div>
 
-        {/* ATTENDANCE LOGS TAB */}
         {activeTab === "logs" && (
           <div className="bg-white shadow rounded-lg overflow-hidden border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200">
@@ -269,7 +443,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* STUDENTS TAB */}
         {activeTab === "students" && user.role === "SUPER_ADMIN" && (
           <div className="space-y-6">
             <form
@@ -313,7 +486,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   className="px-4 py-2 border rounded-lg text-sm bg-white text-slate-700"
                 >
                   <option value="">Unassigned (No Supervisor)</option>
-                  {supervisors.map((sup) => (
+                  {supervisorOptions.map((sup) => (
                     <option key={sup.id} value={sup.id}>
                       {sup.username}
                     </option>
@@ -378,6 +551,230 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           className="text-xs font-semibold text-blue-600 hover:underline"
                         >
                           Toggle Status
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "supervisors" && user.role === "SUPER_ADMIN" && (
+          <div className="space-y-6">
+            <form
+              onSubmit={handleSupervisorSubmit}
+              className="bg-white p-6 shadow rounded-lg border border-slate-200 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <h3 className="text-lg font-bold text-slate-800">
+                  {editingSupervisorId
+                    ? "Edit Supervisor"
+                    : "Add New Supervisor"}
+                </h3>
+                {editingSupervisorId && (
+                  <button
+                    type="button"
+                    onClick={resetSupervisorForm}
+                    className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {supervisorMessage && (
+                <p className="text-sm text-blue-700 font-medium">
+                  {supervisorMessage}
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <input
+                  type="text"
+                  placeholder="Username"
+                  required
+                  value={supervisorForm.username}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      username: e.target.value,
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm"
+                />
+                {!editingSupervisorId && (
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    required
+                    value={supervisorForm.password}
+                    onChange={(e) =>
+                      setSupervisorForm({
+                        ...supervisorForm,
+                        password: e.target.value,
+                      })
+                    }
+                    className="px-4 py-2 border rounded-lg text-sm"
+                  />
+                )}
+                {editingSupervisorId && (
+                  <input
+                    type="password"
+                    placeholder="New password (optional)"
+                    value={supervisorForm.password}
+                    onChange={(e) =>
+                      setSupervisorForm({
+                        ...supervisorForm,
+                        password: e.target.value,
+                      })
+                    }
+                    className="px-4 py-2 border rounded-lg text-sm"
+                  />
+                )}
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  required
+                  value={supervisorForm.firstName}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      firstName: e.target.value,
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  required
+                  value={supervisorForm.lastName}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      lastName: e.target.value,
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  required
+                  value={supervisorForm.phone}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      phone: e.target.value,
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Department"
+                  required
+                  value={supervisorForm.department}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      department: e.target.value,
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm"
+                />
+                <select
+                  value={supervisorForm.role}
+                  onChange={(e) =>
+                    setSupervisorForm({
+                      ...supervisorForm,
+                      role: e.target.value as "SUPER_ADMIN" | "SUPERVISOR",
+                    })
+                  }
+                  className="px-4 py-2 border rounded-lg text-sm bg-white text-slate-700"
+                >
+                  <option value="SUPERVISOR">Supervisor</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+              >
+                {editingSupervisorId ? "Save Changes" : "Create Supervisor"}
+              </button>
+            </form>
+
+            <div className="bg-white shadow rounded-lg overflow-hidden border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {supervisors.map((supervisor) => (
+                    <tr key={supervisor.id}>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                        {supervisor.firstName} {supervisor.lastName}
+                        <div className="text-xs text-slate-500">
+                          @{supervisor.username}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {supervisor.phone}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {supervisor.department || "—"}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            supervisor.role === "SUPER_ADMIN"
+                              ? "bg-violet-100 text-violet-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {supervisor.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm space-x-3">
+                        <button
+                          onClick={() => handleEditSupervisor(supervisor)}
+                          className="font-semibold text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleToggleSupervisorRole(supervisor)}
+                          className="font-semibold text-violet-600 hover:underline"
+                        >
+                          {supervisor.role === "SUPER_ADMIN"
+                            ? "Demote"
+                            : "Promote"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSupervisor(supervisor.id)}
+                          className="font-semibold text-red-600 hover:underline"
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

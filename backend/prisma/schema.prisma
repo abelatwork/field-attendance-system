@@ -32,6 +32,10 @@ model User {
   id            String     @id @default(uuid())
   username      String     @unique
   passwordHash  String
+  firstName     String     @default("")
+  lastName      String     @default("")
+  phone         String     @default("")
+  department    String     @default("")
   role          Role       @default(SUPERVISOR)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt

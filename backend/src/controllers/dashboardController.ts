@@ -1,7 +1,7 @@
 // backend/src/controllers/dashboardController.ts
-import { Response } from "express";
+import type { Response } from "express";
 import { PrismaClient, Role } from "@prisma/client";
-import { AuthenticatedRequest } from "../middleware/authMiddleware";
+import type { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 
 const prisma = new PrismaClient();
 

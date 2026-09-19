@@ -67,7 +67,7 @@ export const AttendancePage: React.FC = () => {
         });
         setLoadingLocation(false);
       },
-      (error) => {
+      () => {
         setLoadingLocation(false);
         setMessage({
           type: "error",

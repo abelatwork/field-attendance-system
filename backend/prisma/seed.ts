@@ -14,10 +14,19 @@ async function main() {
     where: { username: "admin" },
     update: {
       passwordHash: hashedPassword,
+      firstName: "System",
+      lastName: "Administrator",
+      phone: "+255700000000",
+      department: "Operations",
+      role: Role.SUPER_ADMIN,
     },
     create: {
       username: "admin",
       passwordHash: hashedPassword,
+      firstName: "System",
+      lastName: "Administrator",
+      phone: "+255700000000",
+      department: "Operations",
       role: Role.SUPER_ADMIN,
     },
   });
@@ -25,10 +34,20 @@ async function main() {
   // 3. Create a Supervisor
   const supervisor = await prisma.user.upsert({
     where: { username: "supervisor" },
-    update: {},
+    update: {
+      firstName: "Mary",
+      lastName: "Kiboko",
+      phone: "+255700000001",
+      department: "Field Monitoring",
+      role: Role.SUPERVISOR,
+    },
     create: {
       username: "supervisor",
       passwordHash: hashedPassword,
+      firstName: "Mary",
+      lastName: "Kiboko",
+      phone: "+255700000001",
+      department: "Field Monitoring",
       role: Role.SUPERVISOR,
     },
   });

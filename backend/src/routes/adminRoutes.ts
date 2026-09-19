@@ -5,9 +5,13 @@ import {
   getAllStudents,
   toggleStudentStatus,
   getSupervisors,
-} from "../controllers/adminController";
-import { getAttendanceLogs } from "../controllers/dashboardController";
-import { authenticate, authorize } from "../middleware/authMiddleware";
+  createSupervisor,
+  updateSupervisor,
+  deleteSupervisor,
+  toggleSupervisorRole,
+} from "../controllers/adminController.js";
+import { getAttendanceLogs } from "../controllers/dashboardController.js";
+import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
@@ -17,9 +21,17 @@ router.use(authenticate);
 // Super Admin Only Routes
 router.post("/students", authorize(["SUPER_ADMIN"]), createStudent);
 router.get("/students", authorize(["SUPER_ADMIN"]), getAllStudents);
-// Updated path below to match the frontend api.patch('/admin/students/${id}')
 router.patch("/students/:id", authorize(["SUPER_ADMIN"]), toggleStudentStatus);
+
 router.get("/supervisors", authorize(["SUPER_ADMIN"]), getSupervisors);
+router.post("/supervisors", authorize(["SUPER_ADMIN"]), createSupervisor);
+router.patch("/supervisors/:id", authorize(["SUPER_ADMIN"]), updateSupervisor);
+router.patch(
+  "/supervisors/:id/role",
+  authorize(["SUPER_ADMIN"]),
+  toggleSupervisorRole,
+);
+router.delete("/supervisors/:id", authorize(["SUPER_ADMIN"]), deleteSupervisor);
 
 // Dashboard Attendance Logs (SUPER_ADMIN and SUPERVISOR)
 router.get(

@@ -1,6 +1,7 @@
 // backend/src/middleware/authMiddleware.ts
-import { Request, Response, NextFunction } from "express";
-import { verifyToken, TokenPayload } from "../config/jwt";
+import type { Request, Response, NextFunction } from "express";
+import { verifyToken } from "../config/jwt.js";
+import type { TokenPayload } from "../config/jwt.js";
 
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
@@ -19,6 +20,10 @@ export const authenticate = (
   }
 
   const token = authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "Authorization token required." });
+  }
 
   try {
     const decoded = verifyToken(token);

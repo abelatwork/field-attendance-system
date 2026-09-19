@@ -9,7 +9,12 @@ function App() {
     "public" | "login" | "dashboard"
   >("public");
   const [user, setUser] = useState<{
+    id?: string;
     username: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    department?: string;
     role: "SUPER_ADMIN" | "SUPERVISOR";
   } | null>(null);
 

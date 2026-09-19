@@ -3,7 +3,7 @@ import { Router } from "express";
 import {
   searchStudents,
   recordAttendance,
-} from "../controllers/attendanceController";
+} from "../controllers/attendanceController.js";
 
 const router = Router();
 

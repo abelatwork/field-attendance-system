@@ -2,9 +2,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import attendanceRoutes from "./routes/attendanceRoutes";
-import authRoutes from "./routes/authRoutes";
-import adminRoutes from "./routes/adminRoutes";
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 

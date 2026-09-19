@@ -1,5 +1,5 @@
 // backend/src/controllers/attendanceController.ts
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { PrismaClient, AttendanceType, StudentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();

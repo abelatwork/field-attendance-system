@@ -1,8 +1,8 @@
 // backend/src/controllers/authController.ts
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { generateToken } from "../config/jwt";
+import { generateToken } from "../config/jwt.js";
 
 const prisma = new PrismaClient();
 
@@ -36,6 +36,10 @@ export const login = async (req: Request, res: Response) => {
       user: {
         id: user.id,
         username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        department: user.department,
         role: user.role,
       },
     });
