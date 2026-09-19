@@ -427,6 +427,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     a.click();
   };
 
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+    user.username;
+
   return (
     <div className="min-h-screen bg-slate-100">
       <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
@@ -435,7 +439,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Field Attendance Dashboard
           </h1>
           <p className="text-xs text-slate-500">
-            User: <span className="font-semibold">{user.username}</span> (
+            User: <span className="font-semibold">{displayName}</span> (
             {user.role})
           </p>
         </div>
