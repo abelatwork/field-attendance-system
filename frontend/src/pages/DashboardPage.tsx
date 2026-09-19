@@ -40,6 +40,8 @@ interface Student {
   supervisor?: {
     id: string;
     username: string;
+    firstName?: string | null;
+    lastName?: string | null;
   } | null;
 }
 
@@ -55,7 +57,8 @@ interface Supervisor {
 
 interface SupervisorOption {
   id: string;
-  username: string;
+  label: string;
+  username?: string;
 }
 
 interface SupervisorForm {
@@ -76,6 +79,15 @@ const emptySupervisorForm: SupervisorForm = {
   phone: "",
   department: "",
   role: "SUPERVISOR",
+};
+
+const formatDisplayName = (
+  firstName?: string | null,
+  lastName?: string | null,
+  fallbackUsername?: string,
+) => {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  return fullName || fallbackUsername || "Unknown";
 };
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -184,6 +196,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           .filter((supervisor) => supervisor.role === "SUPERVISOR")
           .map((supervisor) => ({
             id: supervisor.id,
+            label: formatDisplayName(
+              supervisor.firstName,
+              supervisor.lastName,
+              supervisor.username,
+            ),
             username: supervisor.username,
           })),
       );
@@ -743,7 +760,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <option value="">Unassigned (No Supervisor)</option>
                   {supervisorOptions.map((sup) => (
                     <option key={sup.id} value={sup.id}>
-                      {sup.username}
+                      {sup.label}
                     </option>
                   ))}
                 </select>
@@ -787,7 +804,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         {st.phone}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {st.supervisor ? st.supervisor.username : "Unassigned"}
+                        {st.supervisor
+                          ? formatDisplayName(
+                              st.supervisor.firstName,
+                              st.supervisor.lastName,
+                              st.supervisor.username,
+                            )
+                          : "Unassigned"}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
@@ -988,10 +1011,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   {supervisors.map((supervisor) => (
                     <tr key={supervisor.id}>
                       <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                        {supervisor.firstName} {supervisor.lastName}
-                        <div className="text-xs text-slate-500">
-                          @{supervisor.username}
-                        </div>
+                        {formatDisplayName(
+                          supervisor.firstName,
+                          supervisor.lastName,
+                          supervisor.username,
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {supervisor.phone}
