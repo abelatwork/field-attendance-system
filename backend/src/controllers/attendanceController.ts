@@ -8,18 +8,21 @@ const prisma = new PrismaClient();
 export const searchStudents = async (req: Request, res: Response) => {
   try {
     const query = (req.query.q as string) || "";
+    const normalizedQuery = query.trim();
 
-    if (!query.trim()) {
+    if (!normalizedQuery) {
       return res.status(200).json([]);
     }
+
+    const searchTerms = normalizedQuery.split(/\s+/).filter(Boolean);
 
     const students = await prisma.student.findMany({
       where: {
         status: StudentStatus.ACTIVE,
-        OR: [
-          { firstName: { contains: query, mode: "insensitive" } },
-          { lastName: { contains: query, mode: "insensitive" } },
-        ],
+        OR: searchTerms.flatMap((term) => [
+          { firstName: { contains: term, mode: "insensitive" } },
+          { lastName: { contains: term, mode: "insensitive" } },
+        ]),
       },
       select: {
         id: true,

@@ -11,10 +11,10 @@ function App() {
   const [user, setUser] = useState<{
     id?: string;
     username: string;
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    department?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    department?: string | null;
     role: "SUPER_ADMIN" | "SUPERVISOR";
   } | null>(null);
 
@@ -31,6 +31,19 @@ function App() {
     localStorage.removeItem("user");
     setUser(null);
     setCurrentView("public");
+  };
+
+  const handleUserUpdate = (updatedUser: {
+    id?: string;
+    username: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    department?: string | null;
+    role: "SUPER_ADMIN" | "SUPERVISOR";
+  }) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
   return (
@@ -72,12 +85,17 @@ function App() {
         <LoginPage
           onLoginSuccess={(userData) => {
             setUser(userData);
+            localStorage.setItem("user", JSON.stringify(userData));
             setCurrentView("dashboard");
           }}
         />
       )}
       {currentView === "dashboard" && user && (
-        <DashboardPage user={user} onLogout={handleLogout} />
+        <DashboardPage
+          user={user}
+          onLogout={handleLogout}
+          onUserUpdate={handleUserUpdate}
+        />
       )}
     </div>
   );

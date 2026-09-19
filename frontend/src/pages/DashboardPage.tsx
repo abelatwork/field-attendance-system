@@ -2,15 +2,20 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api";
 
+interface DashboardUser {
+  id?: string;
+  username: string;
+  role: "SUPER_ADMIN" | "SUPERVISOR";
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  department?: string | null;
+}
+
 interface DashboardPageProps {
-  user: {
-    username: string;
-    role: "SUPER_ADMIN" | "SUPERVISOR";
-    firstName?: string;
-    lastName?: string;
-    department?: string;
-  };
+  user: DashboardUser;
   onLogout: () => void;
+  onUserUpdate?: (user: DashboardUser) => void;
 }
 
 interface AttendanceLog {
@@ -76,9 +81,10 @@ const emptySupervisorForm: SupervisorForm = {
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   onLogout,
+  onUserUpdate,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "logs" | "students" | "supervisors"
+    "logs" | "account" | "students" | "supervisors"
   >("logs");
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -102,6 +108,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [supervisorMessage, setSupervisorMessage] = useState<string | null>(
     null,
   );
+  const [accountForm, setAccountForm] = useState({
+    username: user.username,
+    firstName: user.firstName ?? "",
+    lastName: user.lastName ?? "",
+    phone: user.phone ?? "",
+    department: user.department ?? "",
+    currentPassword: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAccountForm({
+      username: user.username,
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      phone: user.phone ?? "",
+      department: user.department ?? "",
+      currentPassword: "",
+      password: "",
+      confirmPassword: "",
+    });
+    setAccountMessage(null);
+  }, [
+    user.username,
+    user.firstName,
+    user.lastName,
+    user.phone,
+    user.department,
+  ]);
 
   useEffect(() => {
     if (activeTab === "logs") fetchLogs();
@@ -189,6 +226,91 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setSupervisorForm(emptySupervisorForm);
     setEditingSupervisorId(null);
     setSupervisorMessage(null);
+  };
+
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmedUsername = accountForm.username.trim();
+    const trimmedFirstName = accountForm.firstName.trim();
+    const trimmedLastName = accountForm.lastName.trim();
+    const trimmedPhone = accountForm.phone.trim();
+    const trimmedDepartment = accountForm.department.trim();
+    const hasPasswordChange = Boolean(
+      accountForm.password || accountForm.confirmPassword,
+    );
+
+    if (!trimmedUsername) {
+      setAccountMessage("Username is required.");
+      return;
+    }
+
+    if (
+      !trimmedFirstName ||
+      !trimmedLastName ||
+      !trimmedPhone ||
+      !trimmedDepartment
+    ) {
+      setAccountMessage(
+        "First name, last name, phone number, and department are required.",
+      );
+      return;
+    }
+
+    if (hasPasswordChange) {
+      if (!accountForm.currentPassword.trim()) {
+        setAccountMessage(
+          "Current password is required to change your password.",
+        );
+        return;
+      }
+
+      if (accountForm.password !== accountForm.confirmPassword) {
+        setAccountMessage("New password and confirmation do not match.");
+        return;
+      }
+
+      if (accountForm.password.length < 6) {
+        setAccountMessage("Password must be at least 6 characters long.");
+        return;
+      }
+    }
+
+    try {
+      const response = await api.patch("/auth/account", {
+        username: trimmedUsername,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        phone: trimmedPhone,
+        department: trimmedDepartment,
+        ...(hasPasswordChange
+          ? {
+              currentPassword: accountForm.currentPassword,
+              password: accountForm.password,
+            }
+          : {}),
+      });
+
+      const { user: updatedUser } = response.data;
+      setAccountMessage("Account updated successfully.");
+      setAccountForm({
+        username: updatedUser.username,
+        firstName: updatedUser.firstName ?? "",
+        lastName: updatedUser.lastName ?? "",
+        phone: updatedUser.phone ?? "",
+        department: updatedUser.department ?? "",
+        currentPassword: "",
+        password: "",
+        confirmPassword: "",
+      });
+      if (onUserUpdate) {
+        onUserUpdate(updatedUser);
+      }
+    } catch (err: any) {
+      setAccountMessage(
+        err.response?.data?.message || "Failed to update account details.",
+      );
+    }
   };
 
   const handleSupervisorSubmit = async (e: React.FormEvent) => {
@@ -338,6 +460,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             >
               Attendance Logs
             </button>
+            <button
+              onClick={() => setActiveTab("account")}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg ${
+                activeTab === "account"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-slate-600 border"
+              }`}
+            >
+              Account
+            </button>
             {user.role === "SUPER_ADMIN" && (
               <>
                 <button
@@ -441,6 +573,125 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </tbody>
             </table>
           </div>
+        )}
+
+        {activeTab === "account" && (
+          <form
+            onSubmit={handleAccountSubmit}
+            className="bg-white p-6 shadow rounded-lg border border-slate-200 space-y-4 max-w-2xl"
+          >
+            <h3 className="text-lg font-bold text-slate-800">
+              Account Settings
+            </h3>
+            {accountMessage && (
+              <p className="text-sm text-blue-700 font-medium">
+                {accountMessage}
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Username"
+                required
+                value={accountForm.username}
+                onChange={(e) =>
+                  setAccountForm({ ...accountForm, username: e.target.value })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+
+              <input
+                type="text"
+                placeholder="First Name"
+                required
+                value={accountForm.firstName}
+                onChange={(e) =>
+                  setAccountForm({ ...accountForm, firstName: e.target.value })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+
+              <input
+                type="text"
+                placeholder="Last Name"
+                required
+                value={accountForm.lastName}
+                onChange={(e) =>
+                  setAccountForm({ ...accountForm, lastName: e.target.value })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+
+              <input
+                type="text"
+                placeholder="Phone Number"
+                required
+                value={accountForm.phone}
+                onChange={(e) =>
+                  setAccountForm({ ...accountForm, phone: e.target.value })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+
+              <input
+                type="text"
+                placeholder="Department"
+                required
+                value={accountForm.department}
+                onChange={(e) =>
+                  setAccountForm({
+                    ...accountForm,
+                    department: e.target.value,
+                  })
+                }
+                className="px-4 py-2 border rounded-lg text-sm sm:col-span-2"
+              />
+
+              <input
+                type="password"
+                placeholder="Current Password"
+                value={accountForm.currentPassword}
+                onChange={(e) =>
+                  setAccountForm({
+                    ...accountForm,
+                    currentPassword: e.target.value,
+                  })
+                }
+                className="px-4 py-2 border rounded-lg text-sm sm:col-span-2"
+              />
+
+              <input
+                type="password"
+                placeholder="New Password"
+                value={accountForm.password}
+                onChange={(e) =>
+                  setAccountForm({ ...accountForm, password: e.target.value })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+
+              <input
+                type="password"
+                placeholder="Confirm New Password"
+                value={accountForm.confirmPassword}
+                onChange={(e) =>
+                  setAccountForm({
+                    ...accountForm,
+                    confirmPassword: e.target.value,
+                  })
+                }
+                className="px-4 py-2 border rounded-lg text-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            >
+              Update Account
+            </button>
+          </form>
         )}
 
         {activeTab === "students" && user.role === "SUPER_ADMIN" && (

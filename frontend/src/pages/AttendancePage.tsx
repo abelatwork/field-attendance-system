@@ -26,7 +26,9 @@ export const AttendancePage: React.FC = () => {
 
   // Autocomplete student lookup
   useEffect(() => {
-    if (searchQuery.trim().length < 2) {
+    const trimmedQuery = searchQuery.trim();
+
+    if (!trimmedQuery) {
       setSuggestions([]);
       return;
     }
@@ -34,13 +36,13 @@ export const AttendancePage: React.FC = () => {
     const timer = setTimeout(async () => {
       try {
         const response = await api.get<StudentOption[]>(
-          `/attendance/search-students?q=${encodeURIComponent(searchQuery)}`,
+          `/attendance/search-students?q=${encodeURIComponent(trimmedQuery)}`,
         );
         setSuggestions(response.data);
       } catch (err) {
         console.error("Search error:", err);
       }
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
